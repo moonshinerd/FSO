@@ -22,44 +22,35 @@ int main() {
         pid_t pid = fork();
 
         if (pid == 0) {
-            // Processo filho executa apenas o comando
             execl(path, path, arg, (char *)NULL);
-
-            // Se execl falhar, imprime erro e encerra
-            fprintf(stderr, "> Erro: %s\n", strerror(errno));
-            exit(127); // Código padrão para comando não encontrado
+            exit(127);
         } else if (pid > 0) {
-            // Processo pai
             int status;
             waitpid(pid, &status, 0);
             gettimeofday(&fim, NULL);
 
             double tempo_execucao;
             calcular_tempo_execucao(inicio, fim, &tempo_execucao);
-            tempo_execucao = (double)((int)(tempo_execucao * 10 + 0.5)) / 10.0; // Arredondar para 1 decimal
+            tempo_execucao = (double)((int)(tempo_execucao * 10 + 0.5)) / 10.0;
             tempo_total += tempo_execucao;
 
             if (WIFEXITED(status)) {
                 int exit_code = WEXITSTATUS(status);
                 if (exit_code == 127) {
-                    // Erro de execução do comando
                     printf("> Erro: No such file or directory\n");
-                    printf("> Demorou 0.0 segundos, retornou 2\n");
-                } else {
-                    // Apenas imprime uma vez o tempo e retorno
-                    printf("> Demorou %.1f segundos, retornou %d\n", tempo_execucao, exit_code);
                 }
+                printf("> Demorou %.1f segundos, retornou %d\n", tempo_execucao, (exit_code == 127) ? 2 : exit_code);
             } else {
                 printf("> Demorou %.1f segundos, retornou -1\n", tempo_execucao);
             }
+            fflush(stdout);
         } else {
-            // Erro ao criar processo
             perror("Erro ao criar processo filho");
             return 1;
         }
     }
 
-    // Impressão total no final
+    tempo_total = (double)((int)(tempo_total * 10 + 0.5)) / 10.0; // Arredondar tempo total
     printf(">> O tempo total foi de %.1f segundos\n", tempo_total);
     return 0;
 }
