@@ -1,56 +1,50 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/wait.h>
 
-void calcular_tempo_execucao(struct timeval inicio, struct timeval fim, double *tempo_execucao) {
-    *tempo_execucao = (fim.tv_sec - inicio.tv_sec) + (fim.tv_usec - inicio.tv_usec) / 1e6;
+double executar_codigo(char *cmd, char *arg) {
+    struct timeval inicio, fim;
+    double tempo_decorrido = 0.0;
+    int status;
+
+    gettimeofday(&inicio, NULL);
+    pid_t pid = fork();
+
+    if (pid == 0) {
+        execl(cmd, cmd, arg, (char *)NULL);
+        printf("> Erro: %s\n", strerror(errno));
+        fclose(stdin);
+        exit(errno);
+    }
+
+    if (waitpid(pid, &status, WUNTRACED))
+        gettimeofday(&fim, NULL);
+
+    double segundos = fim.tv_sec - inicio.tv_sec;
+    double microssegundos = fim.tv_usec - inicio.tv_usec;
+    microssegundos /= 1000000;
+    tempo_decorrido = segundos + microssegundos;
+
+    printf("> Demorou %.1lf segundos, retornou %d\n", tempo_decorrido, WEXITSTATUS(status));
+
+    fflush(stdout);
+    return tempo_decorrido;
 }
 
 int main() {
-    char path[256], arg[256];
+    char cmd[256];
+    char arg[256];
     double tempo_total = 0.0;
 
-    while (scanf("%255s %255s", path, arg) != EOF) {
-        struct timeval inicio, fim;
-        gettimeofday(&inicio, NULL);
-
-        pid_t pid = fork();
-
-        if (pid == 0) {
-            execl(path, path, arg, (char *)NULL);
-            exit(127);
-        } else if (pid > 0) {
-            int status;
-            waitpid(pid, &status, 0);
-            gettimeofday(&fim, NULL);
-
-            double tempo_execucao;
-            calcular_tempo_execucao(inicio, fim, &tempo_execucao);
-            tempo_execucao = (double)((int)(tempo_execucao * 10 + 0.5)) / 10.0;
-            tempo_total += tempo_execucao;
-
-            if (WIFEXITED(status)) {
-                int exit_code = WEXITSTATUS(status);
-                if (exit_code == 127) {
-                    printf("> Erro: No such file or directory\n");
-                }
-                printf("> Demorou %.1f segundos, retornou %d\n", tempo_execucao, (exit_code == 127) ? 2 : exit_code);
-            } else {
-                printf("> Demorou %.1f segundos, retornou -1\n", tempo_execucao);
-            }
-            fflush(stdout);
-        } else {
-            perror("Erro ao criar processo filho");
-            return 1;
-        }
+    while (scanf("%s %s", cmd, arg) != EOF) {
+        tempo_total += executar_codigo(cmd, arg);
     }
 
-    tempo_total = (double)((int)(tempo_total * 10 + 0.5)) / 10.0; // Arredondar tempo total
-    printf(">> O tempo total foi de %.1f segundos\n", tempo_total);
+    printf(">> O tempo total foi de %.1lf segundos\n", tempo_total);
     return 0;
 }
