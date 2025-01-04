@@ -33,7 +33,7 @@ int main(int argc, char *argv[]){
         printf("%d ", i);
         fflush(stdout); // faz o buffer ser impresso na tela em tempo real
     }
-    if (id == 0){
+    if (id != 0){
         printf("\n");
     }
 
